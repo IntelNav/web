@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Hero } from "@/components/Hero";
 import { Typewriter } from "@/components/Typewriter";
 import { TerminalMock, TerminalLine } from "@/components/TerminalMock";
-import { NetworkGraph } from "@/components/NetworkGraph";
+import { InteractiveChain } from "@/components/InteractiveChain";
 import { CopyableShell } from "@/components/CopyableShell";
 
 export default function Home() {
@@ -124,20 +124,21 @@ function LiveDemo() {
 
 function NetworkSection() {
     return (
-        <section className="max-w-6xl mx-auto px-6 py-24 sm:py-32">
+        <section id="chain" className="max-w-6xl mx-auto px-6 py-24 sm:py-32">
             <SectionHeader
-                eyebrow="The chain"
+                eyebrow="Try it"
                 title="A model is a chain of layers. So is the network."
                 lede={
                     <>
-                        Hidden states travel from your machine through every peer
-                        that owns a slice of the model, in order, until the tail
-                        produces a token. Each hop is TCP + Noise + yamux; each
-                        peer&apos;s place is found via Kademlia.
+                        Click any peer below to change its deployment tier.
+                        Watch the latency, throughput, and packet timing shift
+                        live. The crypto stays the same in every configuration —
+                        toggle the security overlay to see what each hop is
+                        actually doing.
                     </>
                 }
             />
-            <NetworkGraph />
+            <InteractiveChain />
         </section>
     );
 }
