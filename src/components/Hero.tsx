@@ -138,9 +138,12 @@ export function Hero() {
                  * float, no breathing, no spin. The wrap below
                  * carries the scroll-driven parallax + the CSS halo
                  * pulse, both of which are atmosphere, not motion. */}
+                {/* Logo column — desktop only. On phones the
+                 * scaled-down mark looked off-balance in the column
+                 * stack, and the type carries the hero on its own. */}
                 <motion.div
                     style={{ y: logoY, rotate: logoRot, opacity }}
-                    className="relative flex justify-center lg:justify-end items-center min-w-0"
+                    className="relative hidden lg:flex justify-end items-center min-w-0"
                 >
                     <div className="logo-glow relative">
                         <LogoSVG size={480} className="select-none" />
