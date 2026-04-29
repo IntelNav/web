@@ -13,22 +13,22 @@ export default function Demo() {
                 </p>
                 <h1 className="font-serif text-4xl sm:text-5xl leading-tight tracking-tight"
                     style={{ color: "var(--strong)" }}>
-                    What it actually looks like.
+                    Fresh install, end to end.
                 </h1>
                 <p className="mt-4 text-lg" style={{ color: "var(--muted)" }}>
-                    A real <code>intelnav</code> walkthrough — recorded, not
-                    edited. The contribution gate fires on first launch,
-                    relay-mode opens the TUI, slash commands surface the full
-                    feature surface (<code>/help</code>, <code>/keybindings</code>,
-                    <code>/hosting</code>), then a real Qwen prompt streams
-                    tokens back through the chain.
+                    A real <code>intelnav</code> walkthrough — no editing,
+                    starts from a clean machine with no config, no identity,
+                    no models. Boots straight into the contribution gate,
+                    enters the TUI in relay mode, downloads Qwen 2.5 from
+                    HuggingFace, then asks it for an answer. Tokens stream
+                    back at the end.
                 </p>
             </header>
 
             <section>
-                <AsciinemaPlayer src="/demo.cast" cols={120} rows={36} />
+                <AsciinemaPlayer src="/demo.cast" cols={130} rows={38} speed={1.6} />
                 <p className="mt-3 text-sm font-mono" style={{ color: "var(--faint)" }}>
-                    asciicast · 33s · loops automatically · 120×36 terminal
+                    asciicast · ~2 min · loops automatically · 130×38 terminal
                 </p>
             </section>
 
@@ -40,36 +40,46 @@ export default function Demo() {
                 <ol className="space-y-2 list-decimal pl-5"
                     style={{ color: "var(--fg)" }}>
                     <li>
-                        <strong>The contribution gate</strong> — first launch
-                        with no slice + no relay flag. Tells you to pick one or
-                        the other before chat unlocks.
+                        <strong>Clean machine.</strong> No config file, no
+                        peer identity, no cached models. Just the binary.
                     </li>
                     <li>
-                        <strong>Relay-mode launch</strong> — the TUI opens with
-                        a status bar showing peer ID and DHT readiness.
+                        <strong>The contribution gate.</strong> First
+                        <code>intelnav</code> launch auto-writes
+                        <code>config.toml</code>, generates an Ed25519
+                        identity, fetches the bootstrap seed list, probes
+                        hardware — then refuses to chat until you commit
+                        to either hosting or relay-only.
                     </li>
                     <li>
-                        <code>/help</code> — full slash-command surface:
-                        <code>/models</code>, <code>/hosting</code>,{" "}
-                        <code>/leave</code>, <code>/service</code>,{" "}
-                        <code>/keybindings</code>, more.
+                        <strong>Relay-mode launch.</strong> Set
+                        <code>INTELNAV_RELAY_ONLY=1</code>, the TUI opens.
                     </li>
                     <li>
-                        <code>/keybindings</code> — every shortcut: double-tap
-                        <code>Esc</code> to clear, <code>Ctrl+G</code> to edit
-                        in <code>$EDITOR</code>, <code>Alt+P</code> to cycle
-                        models, <code>Ctrl+Shift+_</code> to undo.
+                        <code>/help</code> + <code>/keybindings</code> —
+                        the full slash-command and keyboard surface.
                     </li>
                     <li>
-                        <code>/hosting</code> — the daemon RPC reports a live
-                        slice (Qwen 2.5 · 1.5B layers <code>[0..7)</code>),
-                        active chains, state.
+                        <code>/models</code> — three-source picker (local,
+                        swarm, hub). On a clean install only the hub rows
+                        are populated; pressing <code>Enter</code> on
+                        Qwen 2.5 · 0.5B downloads the GGUF + tokenizer
+                        from HuggingFace into the local cache.
                     </li>
                     <li>
                         <strong>Real prompt</strong> — &ldquo;what is 17
-                        squared?&rdquo; streams tokens back through the chain.
+                        squared?&rdquo; → tokens stream back, the answer
+                        is <strong>289</strong>.
+                    </li>
+                    <li>
+                        <code>/quit</code>.
                     </li>
                 </ol>
+                <p className="text-sm pt-3" style={{ color: "var(--muted)" }}>
+                    The cast is 1.6× speed because real downloads take
+                    real seconds. Everything you see is the actual binary
+                    behaviour — no skipping, no editing, no fake terminals.
+                </p>
             </section>
 
             <section className="space-y-4">
