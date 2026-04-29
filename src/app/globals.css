@@ -168,6 +168,16 @@ html, body {
     transform: scaleX(1);
 }
 
+/* Inlined hero logo: the source SVG has Inkscape's default
+ * width="1024mm" attrs, which render at ~3870px and overflow the
+ * viewport on phones. Force any svg inside .logo-glow to honor the
+ * CSS-sized parent. */
+.logo-glow svg {
+    width:  100% !important;
+    height: 100% !important;
+    display: block;
+}
+
 /* asciinema-player — the bundled CSS sets a fixed font size that
  * makes 130-col casts unreadable on phones. Force the player to
  * scale its font with viewport width on small screens, and make sure

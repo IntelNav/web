@@ -38,7 +38,18 @@ export function LogoSVG({
         let cancelled = false;
         fetch("/logo.svg")
             .then((r) => r.text())
-            .then((text) => { if (!cancelled) setSvgText(text); })
+            .then((text) => {
+                if (cancelled) return;
+                // The source SVG ships with `width="1024mm" height="1024mm"`
+                // (Inkscape default), which renders at ~3870 px and forces
+                // any grid/flex track wider than the viewport on phones.
+                // Strip those attrs so the SVG fills its CSS-sized parent.
+                const stripped = text.replace(
+                    /<svg([^>]*?)\s+(width|height)="[^"]*"/gi,
+                    "<svg$1",
+                );
+                setSvgText(stripped);
+            })
             .catch(() => { /* SVG just won't render — better than throwing */ });
         return () => { cancelled = true; };
     }, []);
@@ -145,8 +156,12 @@ export function LogoSVG({
             ref={containerRef}
             className={className}
             style={{
-                width: size,
-                height: size,
+                // Scale to viewport on small screens so the mark never
+                // overflows; cap at the requested `size` on larger
+                // screens. min(N px, 78vw) = "smaller of these two".
+                width:    `min(${size}px, 78vw)`,
+                height:   `min(${size}px, 78vw)`,
+                maxWidth: "100%",
                 color: "var(--accent)", // drives `currentColor` on each path's stroke
             }}
             // SSR-safe: empty until svgText loads, then dangerouslySet

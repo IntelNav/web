@@ -30,9 +30,14 @@ export function Hero() {
             <div className="grid-bg absolute inset-0" aria-hidden />
             <div className="aurora-indigo" aria-hidden />
 
-            <div className="relative z-10 max-w-6xl mx-auto px-6 pt-24 pb-32 sm:pt-32 sm:pb-40 grid lg:grid-cols-[1.2fr_1fr] gap-12 items-center">
-                {/* Text column — left on lg+, top on mobile. */}
-                <motion.div style={{ y: textY, opacity }} className="relative z-10">
+            <div className="relative z-10 max-w-6xl mx-auto px-6 pt-24 pb-32 sm:pt-32 sm:pb-40 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-12 items-center">
+                {/* Text column — left on lg+, top on mobile.
+                 * `min-w-0` lets the column shrink below the
+                 * intrinsic min-content of its children (e.g. the
+                 * CopyableShell with a long nowrap URL), which would
+                 * otherwise force the grid track wider than the
+                 * viewport on phones. */}
+                <motion.div style={{ y: textY, opacity }} className="relative z-10 min-w-0">
                     <motion.p
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -136,7 +141,7 @@ export function Hero() {
                  * pulse, both of which are atmosphere, not motion. */}
                 <motion.div
                     style={{ y: logoY, rotate: logoRot, opacity }}
-                    className="relative flex justify-center lg:justify-end items-center"
+                    className="relative flex justify-center lg:justify-end items-center min-w-0"
                 >
                     <div className="logo-glow relative">
                         <LogoSVG size={480} className="select-none" />
