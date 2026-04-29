@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 
 const links = [
+    { href: "/sovereignty/",  label: "Sovereignty" },
     { href: "/how-it-works/", label: "How it works" },
     { href: "/demo/",         label: "Demo" },
     { href: "/install/",      label: "Install" },

@@ -13,11 +13,143 @@ export default function Home() {
         <>
             <Hero />
             <Tagline />
+            <Sovereignty />
             <LiveDemo />
             <NetworkSection />
             <Features />
             <InstallStrip />
         </>
+    );
+}
+
+/* ────────────────────────────────────────────────────────────────── */
+/* The political case. Centralized inference is unprecedented data
+   centralization — every prompt, logged, by one company. State the
+   threat model concisely and link out to the full argument. */
+function Sovereignty() {
+    return (
+        <section className="max-w-6xl mx-auto px-6 py-24 sm:py-32">
+            <SectionHeader
+                eyebrow="Why decentralized"
+                title="Centralized AI is mass surveillance with extra steps."
+                lede={
+                    <>
+                        Every prompt you send to a hosted model is logged by
+                        one company — your code, your medical questions, your
+                        business plans, your private writing. IntelNav splits
+                        the computation across volunteer hardware so no single
+                        operator sees the whole of it. The wire is real
+                        cryptography. The performance gap closes as the
+                        network grows — the same trajectory Tor and BitTorrent
+                        followed.
+                    </>
+                }
+            />
+
+            <div className="grid md:grid-cols-3 gap-4">
+                <SovCard
+                    tag="Threat"
+                    title="No single operator sees you whole."
+                    body={
+                        <>
+                            The entry peer decrypts your prompt and runs the
+                            front layers. Every downstream peer only ever sees
+                            opaque hidden-state tensors — activations, not
+                            text. No peer can reconstruct what you asked from
+                            its slice. The chain is the boundary; no party is
+                            on both sides of it.
+                        </>
+                    }
+                />
+                <SovCard
+                    tag="Crypto"
+                    title="Real cryptography on every hop."
+                    body={
+                        <>
+                            Noise XX (X25519 ECDH → AES-256-GCM) between every
+                            peer pair. Identities are Ed25519 — there are no
+                            bearer tokens or session cookies to leak. Slice
+                            advertisements are signed; the DHT is not a place
+                            anyone can lie quietly.
+                        </>
+                    }
+                />
+                <SovCard
+                    tag="Trajectory"
+                    title="Slower today. Faster tomorrow."
+                    body={
+                        <>
+                            A 4-hop chain is slower than a single datacenter
+                            call — that&apos;s honest physics. Tor was slow in
+                            2003. BitTorrent was slow in 2002. Network effects
+                            invert the curve: more peers → closer hops, more
+                            hosts of popular slices → parallel chains, better
+                            geographic locality. The network gets faster as
+                            more people join.
+                        </>
+                    }
+                />
+            </div>
+
+            <div className="mt-10 flex flex-wrap gap-3">
+                <Link
+                    href="/sovereignty/"
+                    className="px-5 py-3 rounded-full text-[15px] font-medium transition-all hover:scale-[1.03]"
+                    style={{
+                        background: "var(--accent)",
+                        color: "#ffffff",
+                        boxShadow: "0 8px 24px -8px rgba(99, 102, 241, 0.55)",
+                    }}
+                >
+                    The full threat model →
+                </Link>
+                <Link
+                    href="/how-it-works/"
+                    className="px-5 py-3 rounded-full text-[15px] font-medium"
+                    style={{
+                        background: "transparent",
+                        color: "var(--strong)",
+                        border: "1px solid var(--line-2)",
+                    }}
+                >
+                    How it works
+                </Link>
+            </div>
+        </section>
+    );
+}
+
+function SovCard({
+    tag, title, body,
+}: {
+    tag: string;
+    title: string;
+    body: React.ReactNode;
+}) {
+    return (
+        <motion.div
+            initial={{ y: 16, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            className="rounded-2xl p-6"
+            style={{
+                background: "var(--panel)",
+                border: "1px solid var(--line)",
+            }}
+        >
+            <p className="text-xs tracking-[0.2em] uppercase mb-3 font-mono"
+               style={{ color: "var(--accent)" }}>
+                {tag}
+            </p>
+            <h3 className="font-serif text-xl mb-3 tracking-tight leading-snug"
+                style={{ color: "var(--strong)" }}>
+                {title}
+            </h3>
+            <p className="leading-relaxed" style={{ color: "var(--muted)" }}>
+                {body}
+            </p>
+        </motion.div>
     );
 }
 
