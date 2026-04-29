@@ -3,14 +3,14 @@
 import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-/** A shell-snippet code block with a copy-to-clipboard button on the
- * right. Click → writes `text` to the clipboard, swaps the icon for a
- * "Copied" check that fades back to the icon after 1.5 s. Modeled on
- * the `npm i -g …` block on claude.ai's lp.
+/** A shell-snippet code block with a copy-to-clipboard button on
+ * the right. Click writes `text` to the clipboard and swaps the
+ * icon for a "Copied" check that fades back to the icon after
+ * 1.5 s.
  *
- * Pass the user-visible string in `text`; the prompt `$` is rendered
- * separately (as a faint marker) and is NOT copied — the same way
- * Claude's, GitHub's, etc. handle it. */
+ * Pass the user-visible string in `text`. The prompt `$` is
+ * rendered separately as a faint marker, and is NOT copied (same
+ * convention GitHub uses on its inline shell blocks). */
 export function CopyableShell({
     text,
     label,
