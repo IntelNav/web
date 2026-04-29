@@ -262,11 +262,13 @@ function NetworkSection() {
                 title="A model is a chain of layers. So is the network."
                 lede={
                     <>
-                        Click any peer below to change its deployment tier.
-                        Watch the latency, throughput, and packet timing shift
-                        live. The crypto stays the same in every configuration —
-                        toggle the security overlay to see what each hop is
-                        actually doing.
+                        The bar below is one Qwen-class model — 24 transformer
+                        blocks, divided across four peers. Click a peer to flip
+                        its connection tier; drag a divider to re-assign which
+                        layers each peer holds. The latency and throughput
+                        recompute as you go, so you can feel the tradeoff:
+                        bigger slice = more compute on that peer, more peers
+                        = more network hops.
                     </>
                 }
             />

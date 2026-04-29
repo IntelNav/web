@@ -1,512 +1,296 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useMemo } from "react";
+import { motion } from "framer-motion";
 
-/* ────────────────────────────────────────────────────────────────────
- * Interactive chain explorer.
+/* The chain explorer.
  *
- * A real-feeling simulator of the IntelNav forward path. Every peer
- * node is clickable; clicking cycles its deployment tier through
- * LAN → Continent → WAN. The packet flying through the chain
- * automatically retimes to match — slow when most hops are WAN, fast
- * when most are LAN — and a stats panel below derives end-to-end
- * latency + tok/s + security posture live.
+ * One visual: a horizontal layer-stack bar showing all 24 transformer
+ * blocks of a Qwen-2.5 0.5B-class model, divided among four peers.
+ * Width of each section = number of layers that peer owns.
  *
- * Numbers are realistic but illustrative. They're tuned to convey
- * the *shape* of the trade-off (LAN beats WAN by an order of
- * magnitude on tok/s, security posture is the same regardless), not
- * to be a benchmark.
- * ────────────────────────────────────────────────────────────────── */
+ * Two interactions:
+ *   1. Click a peer to flip its connection tier (LAN → Continent → WAN).
+ *   2. Drag a divider to re-assign layer ranges between neighbors.
+ *
+ * One readout: a single sentence with first-token latency, steady-state
+ * tokens/sec, and which peer is the current bottleneck.
+ *
+ * Everything else (moving packets, security overlays, edge badges,
+ * legend, reset button) was chrome that competed with the architecture
+ * idea. The architecture idea is: layers are partitioned across peers,
+ * the partition is reassignable, and topology determines latency. */
+
+const N_BLOCKS = 24;
+const COMPUTE_PER_BLOCK_MS = 3.2;
 
 type Tier = "lan" | "cont" | "wan";
-
-type Peer = {
-    id: string;
-    x: number; y: number;
-    label: string; sub: string;
-    role: "client" | "peer" | "tail";
-    tier: Tier;
+const TIERS: Record<Tier, { label: string; rtt: number }> = {
+    lan:  { label: "LAN",       rtt: 4   },
+    cont: { label: "Continent", rtt: 32  },
+    wan:  { label: "WAN",       rtt: 110 },
 };
+const NEXT_TIER: Record<Tier, Tier> = { lan: "cont", cont: "wan", wan: "lan" };
 
-const TIERS: Record<Tier, { label: string; rtt: number; color: string; desc: string }> = {
-    lan:  { label: "LAN",       rtt: 5,   color: "#22c55e", desc: "Same network · ~5ms" },
-    cont: { label: "Continent", rtt: 50,  color: "#eab308", desc: "Same region · ~50ms" },
-    wan:  { label: "WAN",       rtt: 200, color: "#ef4444", desc: "Cross-ocean · ~200ms" },
+type Peer = { id: string; name: string; tier: Tier };
+type ChainStats = {
+    ranges:         ReadonlyArray<readonly [number, number]>;
+    peerCompute:    number[];
+    hopRtts:        number[];
+    networkMs:      number;
+    computeMs:      number;
+    firstTokenMs:   number;
+    bottleneckIdx:  number;
+    tokPerSec:      number;
 };
-
-/** Per-hop compute cost (ms). The peer has to actually run a forward
- * pass through its layer slice; this is the baseline irrespective of
- * network tier. Bumped slightly up to keep tok/s honest with what
- * we'd see on consumer GPUs running a 7B-class slice. */
-const COMPUTE_PER_HOP_MS = 35;
-
 const INITIAL_PEERS: Peer[] = [
-    { id: "client", x: 90,  y: 200, label: "you",    sub: "layers 0..6",   role: "client", tier: "lan" },
-    { id: "a",      x: 260, y: 110, label: "peer A", sub: "layers 6..12",  role: "peer",   tier: "lan" },
-    { id: "b",      x: 470, y: 80,  label: "peer B", sub: "layers 12..18", role: "peer",   tier: "cont" },
-    { id: "c",      x: 680, y: 110, label: "peer C", sub: "layers 18..24", role: "peer",   tier: "cont" },
-    { id: "tail",   x: 830, y: 200, label: "peer D", sub: "layers 24..28", role: "tail",   tier: "lan" },
+    { id: "you", name: "you",    tier: "lan"  },
+    { id: "a",   name: "peer A", tier: "lan"  },
+    { id: "b",   name: "peer B", tier: "cont" },
+    { id: "c",   name: "tail",   tier: "wan"  },
 ];
+const INITIAL_SPLITS = [6, 12, 18];   // four ranges: [0,6) [6,12) [12,18) [18,24)
 
-const EDGES: [string, string][] = [
-    ["client", "a"], ["a", "b"], ["b", "c"], ["c", "tail"],
-];
-
-const TIER_ORDER: Tier[] = ["lan", "cont", "wan"];
-const cycle = (t: Tier): Tier => TIER_ORDER[(TIER_ORDER.indexOf(t) + 1) % TIER_ORDER.length];
-
-/** Edge RTT is the worst tier of either endpoint: a packet spends
- * its time on the slowest link, not an average. */
-function edgeRtt(a: Peer, b: Peer): number {
-    return Math.max(TIERS[a.tier].rtt, TIERS[b.tier].rtt);
-}
+/* Indigo gradient — saturates as the chain progresses, so the eye
+ * follows hidden state from "you" (lightest) to "tail" (deepest). */
+const PEER_COLORS = ["#a5b4fc", "#818cf8", "#6366f1", "#4338ca"];
 
 export function InteractiveChain() {
-    const [peers, setPeers] = useState<Peer[]>(INITIAL_PEERS);
-    const [showSecurity, setShowSecurity] = useState(false);
+    const [peers, setPeers]   = useState(INITIAL_PEERS);
+    const [splits, setSplits] = useState(INITIAL_SPLITS);
+    const [dragIdx, setDragIdx] = useState<number | null>(null);
+    const barRef = useRef<HTMLDivElement>(null);
 
-    const byId = useMemo(
-        () => Object.fromEntries(peers.map((p) => [p.id, p])),
-        [peers]
-    );
-
-    /** Sum of RTTs across the chain. Each hop = one RTT (request +
-     * response on a single TCP session). The tail then has to send
-     * the token back upstream — symmetric, so we double the chain
-     * length for prompt-to-token latency. */
-    const stats = useMemo(() => {
-        const hopRtts = EDGES.map(([from, to]) => edgeRtt(byId[from], byId[to]));
-        const networkMs = hopRtts.reduce((s, r) => s + r, 0);
-        const computeMs = peers.length * COMPUTE_PER_HOP_MS;
+    /* Derive everything from (peers, splits). */
+    const stats = useMemo<ChainStats>(() => {
+        const ranges = peers.map((_, i) => {
+            const start = i === 0 ? 0 : splits[i - 1];
+            const end   = i === splits.length ? N_BLOCKS : splits[i];
+            return [start, end] as const;
+        });
+        const peerCompute = ranges.map(([s, e]) => (e - s) * COMPUTE_PER_BLOCK_MS);
+        const hopRtts = peers.slice(1).map((p, i) =>
+            Math.max(TIERS[peers[i].tier].rtt, TIERS[p.tier].rtt));
+        const networkMs    = hopRtts.reduce((a, b) => a + b, 0);
+        const computeMs    = peerCompute.reduce((a, b) => a + b, 0);
         const firstTokenMs = networkMs + computeMs;
-        // Steady-state: each subsequent token only re-traverses the
-        // chain (no first-time loads). 1000 / firstTokenMs ≈ tok/s.
-        const tokPerSec = 1000 / firstTokenMs;
-        const worstTier = peers.reduce<Tier>((w, p) => {
-            return TIERS[p.tier].rtt > TIERS[w].rtt ? p.tier : w;
-        }, "lan");
-        return { hopRtts, networkMs, computeMs, firstTokenMs, tokPerSec, worstTier };
-    }, [peers, byId]);
+        /* Per-peer "stage time" = compute + outbound RTT. The peer
+         * with the largest stage time caps steady-state throughput. */
+        const stageMs = peers.map((_, i) => peerCompute[i] + (hopRtts[i] ?? 0));
+        const bottleneckIdx = stageMs.indexOf(Math.max(...stageMs));
+        const tokPerSec = 1000 / stageMs[bottleneckIdx];
+        return { ranges, peerCompute, hopRtts, networkMs, computeMs,
+                 firstTokenMs, bottleneckIdx, tokPerSec };
+    }, [peers, splits]);
 
-    const togglePeerTier = (id: string) => {
-        setPeers((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, tier: cycle(p.tier) } : p))
-        );
+    const cycleTier = (id: string) => {
+        if (dragIdx !== null) return;
+        setPeers((ps) => ps.map((p) =>
+            p.id === id ? { ...p, tier: NEXT_TIER[p.tier] } : p));
     };
 
-    /** Animation duration matched to real RTTs. Capped so the user
-     * doesn't have to wait 5 seconds to see a WAN packet land. */
-    const packetCycleSec = Math.max(2.4, Math.min(8, stats.firstTokenMs / 250));
+    /* Drag a divider. Constraint: each peer keeps ≥ 1 block. */
+    const onDividerDown = (i: number) => (e: React.PointerEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragIdx(i);
+        (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    };
+    const onDividerMove = (i: number) => (e: React.PointerEvent) => {
+        if (dragIdx !== i || !barRef.current) return;
+        const rect = barRef.current.getBoundingClientRect();
+        const blockX = Math.round(((e.clientX - rect.left) / rect.width) * N_BLOCKS);
+        const min = i === 0                  ? 1            : splits[i - 1] + 1;
+        const max = i === splits.length - 1  ? N_BLOCKS - 1 : splits[i + 1] - 1;
+        const next = Math.max(min, Math.min(max, blockX));
+        setSplits((s) => s[i] === next ? s : s.map((v, k) => k === i ? next : v));
+    };
+    const onDividerUp = (e: React.PointerEvent) => {
+        (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+        setDragIdx(null);
+    };
 
     return (
-        <div className="space-y-4">
-            <div
-                className="relative w-full overflow-hidden rounded-2xl"
-                style={{
-                    background: "var(--panel)",
-                    border: "1px solid var(--line)",
-                }}
-            >
-                <svg
-                    viewBox="0 0 920 320"
-                    className="w-full h-auto block"
-                    style={{ color: "var(--muted)" }}
-                >
-                    <defs>
-                        <radialGradient id="ic-packet" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%"  stopColor="var(--accent-2)" stopOpacity="1" />
-                            <stop offset="60%" stopColor="var(--accent)"   stopOpacity="0.6" />
-                            <stop offset="100%" stopColor="var(--accent)"  stopOpacity="0" />
-                        </radialGradient>
-                    </defs>
-
-                    {/* Edges. Color reflects the dominant tier of the
-                      * two endpoints — visual cue for which leg is
-                      * the bottleneck. */}
-                    {EDGES.map(([from, to], i) => {
-                        const a = byId[from], b = byId[to];
-                        const tier = TIERS[a.tier].rtt >= TIERS[b.tier].rtt ? a.tier : b.tier;
-                        const rtt = stats.hopRtts[i];
-                        return (
-                            <g key={`${from}-${to}`}>
-                                <motion.line
-                                    x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                                    stroke={TIERS[tier].color}
-                                    strokeOpacity={0.55}
-                                    strokeWidth={2}
-                                    initial={false}
-                                    animate={{ stroke: TIERS[tier].color }}
-                                    transition={{ duration: 0.3 }}
-                                />
-                                {/* RTT badge on each edge. Position
-                                  * = midpoint, slightly above the
-                                  * line. */}
-                                <g transform={`translate(${(a.x + b.x) / 2}, ${(a.y + b.y) / 2 - 14})`}>
-                                    <rect
-                                        x={-22} y={-9} width={44} height={18} rx={9}
-                                        fill="var(--bg)"
-                                        stroke={TIERS[tier].color}
-                                        strokeOpacity={0.6}
-                                    />
-                                    <text
-                                        x={0} y={4}
-                                        textAnchor="middle"
-                                        fontSize={10}
-                                        fontFamily="var(--font-mono)"
-                                        style={{ fill: "var(--strong)" }}
-                                    >
-                                        {rtt}ms
-                                    </text>
-                                </g>
-                                {/* Security badge — only when the
-                                  * overlay is on. */}
-                                {showSecurity && (
-                                    <g transform={`translate(${(a.x + b.x) / 2}, ${(a.y + b.y) / 2 + 18})`}>
-                                        <rect
-                                            x={-44} y={-9} width={88} height={18} rx={9}
-                                            fill="var(--accent)"
-                                            fillOpacity={0.12}
-                                            stroke="var(--accent)"
-                                            strokeOpacity={0.4}
-                                        />
-                                        <text
-                                            x={0} y={4}
-                                            textAnchor="middle"
-                                            fontSize={9}
-                                            fontFamily="var(--font-mono)"
-                                            style={{ fill: "var(--accent)" }}
-                                        >
-                                            {i === 0 ? "X25519 + Noise XX" : "Noise XX"}
-                                        </text>
-                                    </g>
-                                )}
-                            </g>
-                        );
-                    })}
-
-                    {/* Flowing packet — retimes whenever cycle changes. */}
-                    <FlowingPacket
-                        peers={peers}
-                        edges={EDGES}
-                        cycleSec={packetCycleSec}
-                    />
-
-                    {/* Peer nodes. */}
-                    {peers.map((p) => (
-                        <PeerNode
-                            key={p.id}
-                            peer={p}
-                            onClick={() => togglePeerTier(p.id)}
-                        />
-                    ))}
-                </svg>
-
-                <div
-                    className="px-5 py-3 text-xs flex flex-wrap gap-x-5 gap-y-2 items-center"
-                    style={{
-                        borderTop: "1px solid var(--line)",
-                        color: "var(--muted)",
-                    }}
-                >
-                    <span style={{ color: "var(--strong)" }}>
-                        Click a peer to change its deployment tier.
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ background: TIERS.lan.color }} />
-                        LAN
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ background: TIERS.cont.color }} />
-                        Continent
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full" style={{ background: TIERS.wan.color }} />
-                        WAN
-                    </span>
-                    <div className="flex-1" />
-                    <button
-                        onClick={() => setShowSecurity((v) => !v)}
-                        className="text-[12px] px-3 py-1 rounded-full transition-colors"
-                        style={{
-                            background: showSecurity ? "var(--accent)" : "var(--panel-2)",
-                            color: showSecurity ? "#ffffff" : "var(--muted)",
-                            border: "1px solid var(--line-2)",
-                        }}
-                    >
-                        {showSecurity ? "✓ Security overlay" : "Show security"}
-                    </button>
-                    <button
-                        onClick={() => setPeers(INITIAL_PEERS)}
-                        className="text-[12px] px-3 py-1 rounded-full transition-colors"
-                        style={{
-                            background: "var(--panel-2)",
-                            color: "var(--muted)",
-                            border: "1px solid var(--line-2)",
-                        }}
-                    >
-                        Reset
-                    </button>
+        <div className="space-y-5">
+            {/* Layer-stack bar */}
+            <div className="select-none">
+                <div className="flex justify-between text-[10px] font-mono mb-2"
+                     style={{ color: "var(--faint)" }}>
+                    <span>layer 0</span>
+                    <span>{N_BLOCKS} (head)</span>
                 </div>
+
+                <div ref={barRef} className="relative" style={{ height: 88 }}>
+                    {/* The bar itself: four colored sections, click to flip tier. */}
+                    <div className="flex w-full overflow-hidden rounded-xl"
+                         style={{ height: 88, border: "1px solid var(--line)" }}>
+                        {peers.map((p, i) => {
+                            const [s, e] = stats.ranges[i];
+                            const w = ((e - s) / N_BLOCKS) * 100;
+                            const isBottleneck = i === stats.bottleneckIdx;
+                            return (
+                                <button
+                                    key={p.id}
+                                    onClick={() => cycleTier(p.id)}
+                                    aria-label={`${p.name}: layers ${s} to ${e}, ${TIERS[p.tier].label}. Click to change tier.`}
+                                    className="relative flex flex-col justify-center items-center text-center cursor-pointer transition-[filter,opacity] hover:brightness-110"
+                                    style={{
+                                        width: `${w}%`,
+                                        minWidth: 0,
+                                        background: PEER_COLORS[i],
+                                        color: "#fff",
+                                        boxShadow: isBottleneck
+                                            ? "inset 0 0 0 2px rgba(255,255,255,0.85), inset 0 0 0 4px rgba(0,0,0,0.15)"
+                                            : "none",
+                                    }}
+                                >
+                                    {/* Subtle layer ticks — one faint line per block boundary inside this peer. */}
+                                    <LayerTicks count={e - s} />
+
+                                    <span className="relative font-serif text-[15px] sm:text-[17px] truncate w-full px-2 leading-tight">
+                                        {p.name}
+                                    </span>
+                                    <span className="relative mt-1 font-mono text-[10px] tracking-[0.12em] uppercase opacity-90 truncate w-full px-2">
+                                        {s}..{e} · {TIERS[p.tier].label}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Draggable dividers — overlaid at the boundaries. */}
+                    {splits.map((sx, i) => (
+                        <div
+                            key={i}
+                            onPointerDown={onDividerDown(i)}
+                            onPointerMove={onDividerMove(i)}
+                            onPointerUp={onDividerUp}
+                            onPointerCancel={onDividerUp}
+                            role="separator"
+                            aria-label={`Boundary at layer ${sx}. Drag to re-slice.`}
+                            aria-valuenow={sx}
+                            aria-valuemin={i === 0 ? 1 : splits[i - 1] + 1}
+                            aria-valuemax={i === splits.length - 1 ? N_BLOCKS - 1 : splits[i + 1] - 1}
+                            className="absolute top-0 -translate-x-1/2 cursor-ew-resize touch-none flex items-center justify-center"
+                            style={{
+                                left: `${(sx / N_BLOCKS) * 100}%`,
+                                width: 22,
+                                height: 88,
+                            }}
+                        >
+                            <div className="absolute h-full transition-[width,background]"
+                                 style={{
+                                     width:      dragIdx === i ? 4 : 2,
+                                     background: dragIdx === i ? "var(--accent)" : "rgba(255,255,255,0.6)",
+                                 }}
+                            />
+                            <div className="rounded-full transition-[width,height,border-color,box-shadow]"
+                                 style={{
+                                     width:        dragIdx === i ? 18 : 14,
+                                     height:       dragIdx === i ? 18 : 14,
+                                     background:   "var(--bg)",
+                                     border:       `2px solid ${dragIdx === i ? "var(--accent)" : "var(--line-2)"}`,
+                                     boxShadow:    dragIdx === i
+                                         ? "0 0 0 4px rgba(99, 102, 241, 0.18)"
+                                         : "0 1px 4px rgba(0, 0, 0, 0.18)",
+                                     position:     "relative",
+                                 }}
+                            />
+                        </div>
+                    ))}
+                </div>
+
+                <p className="mt-3 text-xs font-mono" style={{ color: "var(--faint)" }}>
+                    click a peer to flip its tier · drag a divider to re-slice the model
+                </p>
             </div>
 
-            <StatsPanel stats={stats} />
-
-            <AnimatePresence>
-                {showSecurity && <SecurityPanel />}
-            </AnimatePresence>
+            {/* One-sentence readout */}
+            <Readout stats={stats} peers={peers} />
         </div>
     );
 }
 
-/* ────────────────────────────────────────────────────────────────── */
-
-function PeerNode({ peer, onClick }: { peer: Peer; onClick: () => void }) {
-    const tier = TIERS[peer.tier];
-    const fill =
-        peer.role === "client" ? "var(--accent)" :
-        peer.role === "tail"   ? "var(--accent-2)" :
-                                 "var(--panel-2)";
-    const stroke = tier.color;
-
+/* Faint vertical hairlines marking each block boundary inside a peer's
+ * range — makes layer-count visceral without competing with the label. */
+function LayerTicks({ count }: { count: number }) {
+    if (count <= 1) return null;
+    const ticks = Array.from({ length: count - 1 }, (_, i) => (i + 1) / count);
     return (
-        <motion.g
-            style={{ cursor: "pointer", transformOrigin: `${peer.x}px ${peer.y}px` }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.94 }}
-            onClick={onClick}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        >
-            {/* Pulse halo for client + tail. */}
-            {peer.role !== "peer" && (
-                <motion.circle
-                    cx={peer.x} cy={peer.y} r={28}
-                    fill={fill} opacity={0.18}
-                    animate={{ r: [26, 36, 26], opacity: [0.25, 0.05, 0.25] }}
-                    transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden>
+            {ticks.map((p, i) => (
+                <div key={i} className="absolute top-1 bottom-1"
+                     style={{
+                         left: `${p * 100}%`,
+                         width: 1,
+                         background: "rgba(255, 255, 255, 0.16)",
+                     }}
                 />
-            )}
-            <circle cx={peer.x} cy={peer.y} r={22} fill={fill} stroke={stroke} strokeWidth={2.5} />
-
-            {/* Tier badge — small pill on top-right of the node. */}
-            <g transform={`translate(${peer.x + 14}, ${peer.y - 24})`}>
-                <rect
-                    x={-22} y={-9} width={44} height={18} rx={9}
-                    fill={stroke}
-                />
-                <text
-                    x={0} y={4}
-                    textAnchor="middle"
-                    fontSize={10}
-                    fontWeight={700}
-                    fontFamily="var(--font-mono)"
-                    style={{ fill: "#ffffff" }}
-                >
-                    {tier.label}
-                </text>
-            </g>
-
-            <text
-                x={peer.x} y={peer.y - 38}
-                textAnchor="middle"
-                fontSize={13}
-                fontWeight={600}
-                style={{ fill: "var(--strong)", fontFamily: "var(--font-sans)" }}
-            >
-                {peer.label}
-            </text>
-            <text
-                x={peer.x} y={peer.y + 38}
-                textAnchor="middle"
-                fontSize={11}
-                style={{ fill: "var(--muted)", fontFamily: "var(--font-mono)" }}
-            >
-                {peer.sub}
-            </text>
-        </motion.g>
+            ))}
+        </div>
     );
 }
 
-/* ────────────────────────────────────────────────────────────────── */
-
-function FlowingPacket({
-    peers, edges, cycleSec,
+function Readout({
+    stats, peers,
 }: {
+    stats: ChainStats;
     peers: Peer[];
-    edges: [string, string][];
-    cycleSec: number;
 }) {
-    const byId = Object.fromEntries(peers.map((p) => [p.id, p]));
-
-    // Build per-segment data + their relative durations weighted by
-    // tier RTT so the packet "feels" slow on WAN legs and quick on
-    // LAN legs.
-    const segments = edges.map(([from, to]) => {
-        const a = byId[from], b = byId[to];
-        const rtt = edgeRtt(a, b);
-        return { ax: a.x, ay: a.y, bx: b.x, by: b.y, weight: rtt };
-    });
-    const totalWeight = segments.reduce((s, seg) => s + seg.weight, 0);
-
-    // Build keyframes for cx, cy. `times` walks 0 → 1 with breakpoints
-    // at each segment boundary, weighted by RTT.
-    const xKeys: number[] = [];
-    const yKeys: number[] = [];
-    const tKeys: number[] = [0];
-    let acc = 0;
-    segments.forEach((s) => {
-        xKeys.push(s.ax);
-        yKeys.push(s.ay);
-        acc += s.weight;
-        tKeys.push(acc / totalWeight);
-    });
-    const last = segments[segments.length - 1];
-    xKeys.push(last.bx);
-    yKeys.push(last.by);
-
+    const bn = peers[stats.bottleneckIdx];
     return (
-        <motion.circle
-            r={11}
-            fill="url(#ic-packet)"
-            initial={false}
-            animate={{ cx: xKeys, cy: yKeys }}
-            transition={{
-                cx: { duration: cycleSec, repeat: Infinity, ease: "linear", times: tKeys },
-                cy: { duration: cycleSec, repeat: Infinity, ease: "linear", times: tKeys },
-            }}
-        />
-    );
-}
-
-/* ────────────────────────────────────────────────────────────────── */
-
-function StatsPanel({
-    stats,
-}: {
-    stats: {
-        hopRtts: number[];
-        networkMs: number;
-        computeMs: number;
-        firstTokenMs: number;
-        tokPerSec: number;
-        worstTier: Tier;
-    };
-}) {
-    return (
-        <motion.div
-            layout
-            className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 rounded-2xl"
-            style={{
-                background: "var(--panel)",
-                border: "1px solid var(--line)",
-            }}
+        <div
+            className="rounded-2xl px-5 py-4 grid sm:grid-cols-[1fr_1fr_auto] gap-x-6 gap-y-3 items-baseline"
+            style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
         >
-            <Stat
-                label="Network RTT"
-                value={`${stats.networkMs.toFixed(0)}ms`}
-                hint={`${stats.hopRtts.length} hops`}
-            />
-            <Stat
-                label="Compute"
-                value={`${stats.computeMs.toFixed(0)}ms`}
-                hint={`${COMPUTE_PER_HOP_MS}ms × ${stats.hopRtts.length + 1} peers`}
-            />
-            <Stat
+            <Metric
                 label="Time to first token"
-                value={`${stats.firstTokenMs.toFixed(0)}ms`}
-                hint="prompt → first token"
-                emphasized
+                value={`${stats.firstTokenMs.toFixed(0)} ms`}
+                hint={`${stats.networkMs.toFixed(0)} ms wire + ${stats.computeMs.toFixed(0)} ms compute`}
             />
-            <Stat
-                label="Steady-state"
+            <Metric
+                label="Steady-state throughput"
                 value={`${stats.tokPerSec.toFixed(1)} tok/s`}
-                hint={`bottleneck: ${TIERS[stats.worstTier].label}`}
-                emphasized
+                hint={`limited by ${bn.name}`}
             />
-        </motion.div>
+            <div>
+                <div className="text-[10px] tracking-[0.18em] uppercase font-mono mb-1"
+                     style={{ color: "var(--muted)" }}>
+                    Bottleneck
+                </div>
+                <div className="font-serif text-[17px] tracking-tight"
+                     style={{ color: "var(--strong)" }}>
+                    {bn.name}
+                </div>
+                <div className="text-[12px] mt-0.5" style={{ color: "var(--faint)" }}>
+                    {TIERS[bn.tier].label} · {TIERS[bn.tier].rtt} ms RTT
+                </div>
+            </div>
+        </div>
     );
 }
 
-function Stat({
-    label, value, hint, emphasized = false,
-}: {
-    label: string; value: string; hint?: string; emphasized?: boolean;
-}) {
+function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
     return (
         <div>
-            <div
-                className="text-[11px] tracking-[0.15em] uppercase font-mono mb-1"
-                style={{ color: emphasized ? "var(--accent)" : "var(--muted)" }}
-            >
+            <div className="text-[10px] tracking-[0.18em] uppercase font-mono mb-1"
+                 style={{ color: "var(--muted)" }}>
                 {label}
             </div>
             <motion.div
                 key={value}
-                initial={{ opacity: 0, y: -4 }}
+                initial={{ opacity: 0, y: -3 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25 }}
-                className="font-serif text-2xl tracking-tight"
-                style={{ color: "var(--strong)" }}
+                transition={{ duration: 0.18 }}
+                className="font-serif text-[22px] tracking-tight"
+                style={{ color: "var(--accent)" }}
             >
                 {value}
             </motion.div>
-            {hint && (
-                <div className="text-[12px] mt-0.5" style={{ color: "var(--faint)" }}>
-                    {hint}
-                </div>
-            )}
-        </div>
-    );
-}
-
-/* ────────────────────────────────────────────────────────────────── */
-
-function SecurityPanel() {
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-            className="rounded-2xl p-6 grid md:grid-cols-3 gap-5"
-            style={{
-                background: "var(--panel)",
-                border: "1px solid var(--line)",
-            }}
-        >
-            <SecurityCard
-                title="Identity"
-                detail="Each peer carries a long-lived Ed25519 keypair. The peer ID is multihash(pubkey)."
-            />
-            <SecurityCard
-                title="Prompt confidentiality"
-                detail="Ephemeral X25519 between client and entry peer. The prompt body is AES-256-GCM-encrypted; mid-chain peers see only hidden states."
-            />
-            <SecurityCard
-                title="Transport"
-                detail="Every libp2p hop runs Noise XX with the peer's static keypair as long-term identity. RTT and tier don't change the security posture — it's the same crypto end-to-end."
-            />
-        </motion.div>
-    );
-}
-
-function SecurityCard({ title, detail }: { title: string; detail: string }) {
-    return (
-        <div>
-            <div className="flex items-center gap-2 mb-2">
-                <span
-                    className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: "var(--accent)" }}
-                />
-                <h4 className="font-serif text-base" style={{ color: "var(--strong)" }}>
-                    {title}
-                </h4>
+            <div className="text-[12px] mt-0.5" style={{ color: "var(--faint)" }}>
+                {hint}
             </div>
-            <p className="text-sm" style={{ color: "var(--muted)" }}>
-                {detail}
-            </p>
         </div>
     );
 }
+
