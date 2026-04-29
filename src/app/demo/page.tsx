@@ -29,12 +29,33 @@ export default function Demo() {
             <section className="space-y-4">
                 <p className="text-[12px] tracking-[0.2em] uppercase font-mono"
                    style={{ color: "var(--accent)" }}>
-                    The chain
+                    Chat, over the chain
+                </p>
+                <AsciinemaPlayer src="/swarm-tui.cast" cols={120} rows={36} speed={1.3} />
+                <p className="mt-3 text-sm font-mono" style={{ color: "var(--faint)" }}>
+                    asciicast · ~65s · the TUI in <code>--mode network</code>:
+                    type a prompt, hidden states stream through three peers,
+                    tokens come back.
+                </p>
+                <p className="text-sm" style={{ color: "var(--muted)" }}>
+                    Note the banner: <code>peer chain
+                    127.0.0.1:17717,17718,17719 · splits=[6, 12, 18]</code>.
+                    The chat client owns layers 0..6 + the head; each peer
+                    owns one slice of the middle. Qwen 0.5B&apos;s arithmetic
+                    is unreliable (it answered 349) — the infrastructure is
+                    what we&apos;re proving, not the model.
+                </p>
+            </section>
+
+            <section className="space-y-4">
+                <p className="text-[12px] tracking-[0.2em] uppercase font-mono"
+                   style={{ color: "var(--accent)" }}>
+                    The orchestration, behind the scenes
                 </p>
                 <AsciinemaPlayer src="/swarm.cast" cols={130} rows={38} speed={1.4} />
                 <p className="mt-3 text-sm font-mono" style={{ color: "var(--faint)" }}>
-                    asciicast · ~80s · loops automatically · driver layers 0..6 +
-                    peers 6..12 / 12..18 / 18..24
+                    asciicast · ~80s · setup → start three daemons → status →
+                    drive a prompt through the chain → stop.
                 </p>
             </section>
 

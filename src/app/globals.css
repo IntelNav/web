@@ -167,3 +167,22 @@ html, body {
 .link-sweep:hover::after {
     transform: scaleX(1);
 }
+
+/* asciinema-player — the bundled CSS sets a fixed font size that
+ * makes 130-col casts unreadable on phones. Force the player to
+ * scale its font with viewport width on small screens, and make sure
+ * the host element never overflows the article column. */
+.asciinema-player-wrapper,
+.asciinema-player {
+    width: 100% !important;
+    max-width: 100%;
+}
+.asciinema-terminal {
+    font-size: clamp(8px, 1.6vw, 14px) !important;
+    line-height: 1.2 !important;
+}
+@media (max-width: 640px) {
+    .asciinema-terminal {
+        font-size: clamp(6.5px, 2.4vw, 11px) !important;
+    }
+}
