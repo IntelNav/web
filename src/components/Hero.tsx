@@ -23,14 +23,13 @@ export function Hero() {
     return (
         <section
             ref={ref}
-            className="relative overflow-hidden"
-            style={{ minHeight: "92vh" }}
+            className="relative overflow-hidden min-h-[78vh] sm:min-h-[88vh] lg:min-h-[92vh]"
         >
             {/* indigo grid + soft aurora behind everything */}
             <div className="grid-bg absolute inset-0" aria-hidden />
             <div className="aurora-indigo" aria-hidden />
 
-            <div className="relative z-10 max-w-6xl mx-auto px-6 pt-24 pb-32 sm:pt-32 sm:pb-40 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-12 items-center">
+            <div className="relative z-10 max-w-6xl mx-auto px-6 pt-12 pb-16 sm:pt-24 sm:pb-32 lg:pt-32 lg:pb-40 grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-8 lg:gap-12 items-center">
                 {/* Text column — left on lg+, top on mobile.
                  * `min-w-0` lets the column shrink below the
                  * intrinsic min-content of its children (e.g. the

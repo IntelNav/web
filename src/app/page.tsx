@@ -28,7 +28,7 @@ export default function Home() {
    threat model concisely and link out to the full argument. */
 function Sovereignty() {
     return (
-        <section className="max-w-6xl mx-auto px-6 py-24 sm:py-32">
+        <section className="max-w-6xl mx-auto px-6 py-12 sm:py-20 lg:py-28">
             <SectionHeader
                 eyebrow="Why decentralized"
                 title="Centralized AI is mass surveillance with extra steps."
@@ -158,7 +158,7 @@ function SovCard({
    Anti-platform / anti-data-center stance, framed in plain words. */
 function Tagline() {
     return (
-        <section className="max-w-4xl mx-auto px-6 py-32 sm:py-44 text-center">
+        <section className="max-w-4xl mx-auto px-6 py-16 sm:py-28 lg:py-40 text-center">
             <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -179,7 +179,7 @@ function Tagline() {
 
 function LiveDemo() {
     return (
-        <section className="relative max-w-6xl mx-auto px-6 py-24 sm:py-32">
+        <section className="relative max-w-6xl mx-auto px-6 py-12 sm:py-20 lg:py-28">
             <SectionHeader
                 eyebrow="Two binaries, one chain"
                 title="Chat from one terminal. Host from another."
@@ -256,7 +256,7 @@ function LiveDemo() {
 
 function NetworkSection() {
     return (
-        <section id="chain" className="max-w-6xl mx-auto px-6 py-24 sm:py-32">
+        <section id="chain" className="max-w-6xl mx-auto px-6 py-12 sm:py-20 lg:py-28">
             <SectionHeader
                 eyebrow="Try it"
                 title="A model is a chain of layers. So is the network."
@@ -281,7 +281,7 @@ function NetworkSection() {
 
 function Features() {
     return (
-        <section className="max-w-6xl mx-auto px-6 py-24 sm:py-28">
+        <section className="max-w-6xl mx-auto px-6 py-12 sm:py-20 lg:py-24">
             <SectionHeader
                 eyebrow="Architecture"
                 title="Built so the cost of joining stays small."
@@ -360,9 +360,9 @@ const features = [
 
 function InstallStrip() {
     return (
-        <section className="relative max-w-6xl mx-auto px-6 py-20 my-16">
+        <section className="relative max-w-6xl mx-auto px-6 py-10 my-6 sm:py-16 sm:my-10 lg:py-20 lg:my-16">
             <div
-                className="rounded-3xl px-6 py-16 sm:px-12 sm:py-24 text-center relative overflow-hidden"
+                className="rounded-3xl px-5 py-12 sm:px-12 sm:py-20 lg:py-24 text-center relative overflow-hidden"
                 style={{
                     background: "var(--panel)",
                     border: "1px solid var(--line)",
@@ -440,7 +440,7 @@ function SectionHeader({
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="max-w-2xl mb-12"
+            className="max-w-2xl mb-8 sm:mb-12"
         >
             <p
                 className="text-[12px] tracking-[0.2em] uppercase mb-4 font-mono"
