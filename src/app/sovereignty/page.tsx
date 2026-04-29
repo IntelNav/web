@@ -3,9 +3,8 @@ import Link from "next/link";
 export const metadata = {
     title: "Sovereignty",
     description:
-        "Why decentralized AI matters: the threat model, the cryptography, " +
-        "and why a network with worse latency today will be faster than the " +
-        "datacenter tomorrow.",
+        "Why a decentralized model matters. The threat model, the wire " +
+        "format, and what changes when there are more peers.",
 };
 
 export default function Sovereignty() {
@@ -18,38 +17,40 @@ export default function Sovereignty() {
                 </p>
                 <h1 className="font-serif text-4xl sm:text-5xl leading-tight tracking-tight"
                     style={{ color: "var(--strong)" }}>
-                    Why decentralized AI matters.
+                    Why a decentralized model matters.
                 </h1>
                 <p className="mt-4 text-lg leading-relaxed"
                    style={{ color: "var(--muted)" }}>
-                    Centralized inference puts every prompt in the world
-                    through the same handful of companies. Code, medical
-                    questions, financial plans, drafts of resignation
-                    letters, half-formed political opinions, the things you
-                    &ldquo;just want to ask before bed.&rdquo; All of it,
-                    logged, retrievable, subpoena-able, used to train the
-                    next model. This is unprecedented data centralization
-                    — larger than search, larger than email, because the
-                    queries reveal intent, not just interest.
+                    Every prompt sent to a hosted model is logged by the
+                    company that hosts it. Code that didn&apos;t compile.
+                    Medical questions you wouldn&apos;t put to your GP.
+                    Drafts of resignation letters. Half-formed political
+                    opinions. The things you ask before bed because nobody
+                    else is awake. All retained, retrievable, and useful
+                    for training the next model. Search engines saw what
+                    you were curious about. Inference providers see what
+                    you intend to do.
                 </p>
                 <p className="mt-4 text-lg leading-relaxed"
                    style={{ color: "var(--muted)" }}>
-                    IntelNav is an attempt to give that workload back to
-                    its owner. The model isn&apos;t held by anyone. It runs
-                    in pieces, on volunteer hardware, with cryptographic
-                    boundaries between every hop. It is slower today. It
-                    will not be slower forever.
+                    IntelNav approaches the problem from a different
+                    angle. Rather than ask the host to behave, it removes
+                    the host. The model runs in pieces, on volunteer
+                    machines, with cryptographic boundaries between every
+                    pair of peers. It is slower today than a datacenter
+                    call. That changes as more people run nodes.
                 </p>
             </header>
 
             <section className="space-y-5">
                 <h2 className="font-serif text-3xl tracking-tight"
                     style={{ color: "var(--strong)" }}>
-                    The threat model
+                    Threat model
                 </h2>
                 <p style={{ color: "var(--fg)" }}>
-                    Be specific about what we&apos;re defending against and
-                    what we aren&apos;t. Vague privacy claims rot fast.
+                    Specific is better than aspirational. The list below
+                    states what the design defends against and what it
+                    doesn&apos;t.
                 </p>
 
                 <h3 className="font-serif text-xl tracking-tight pt-2"
@@ -57,105 +58,109 @@ export default function Sovereignty() {
                     What no single peer sees
                 </h3>
                 <p>
-                    A chain is at minimum four parties: you, an entry peer
-                    (front layers), middle peers (interior layers), a tail
-                    peer (the head and sampler). The entry peer sees the
-                    plaintext prompt — it has to, to embed it. From layer{" "}
-                    <code>k</code> onward, every peer in the chain sees only
-                    a hidden-state tensor: a vector of floats produced by
-                    the previous layer. That tensor is not text. There is
-                    no published method for reconstructing the prompt from
-                    a mid-layer hidden state of a modern transformer; the
-                    embedding has been folded through{" "}
-                    <em>k</em> non-linear blocks.
+                    A chain has at minimum four parties: a chat client,
+                    an entry peer that owns the front layers, one or more
+                    middle peers, and a tail peer that owns the lm-head.
+                    Only the entry peer ever holds the prompt as text;
+                    it has to, in order to embed it. From layer{" "}
+                    <code>k</code> onward, what travels between peers is
+                    a tensor of activations: a vector of floats that
+                    came out of the previous block.
                 </p>
                 <p>
-                    The chain is therefore the privacy boundary. <em>One</em>{" "}
-                    peer sees your prompt. The other peers see opaque math.
-                    An adversary who controls all the peers in your chain
-                    sees everything; an adversary who controls one of them
-                    sees only their slice.
+                    That tensor is not text. There is no published method
+                    for inverting a mid-layer hidden state of a modern
+                    transformer back to its prompt; the embedding has
+                    been pushed through <em>k</em> non-linear blocks by
+                    the time it leaves the chat client. So the chain is
+                    the privacy boundary. One peer sees plaintext. The
+                    rest see opaque math. An adversary who controls every
+                    peer in your chain sees everything; an adversary who
+                    controls one of them sees only their slice.
                 </p>
 
                 <h3 className="font-serif text-xl tracking-tight pt-2"
                     style={{ color: "var(--strong)" }}>
-                    What the wire looks like
+                    What runs on the wire
                 </h3>
                 <ul className="space-y-3 list-disc pl-5">
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Noise XX
                         </strong>{" "}
-                        between every peer pair: ephemeral X25519 ECDH for
-                        the handshake, AES-256-GCM for the bulk transport.
-                        Forward secrecy by default — compromising a peer
-                        tomorrow doesn&apos;t decrypt a chain it was on
-                        yesterday.
+                        between every peer pair. Ephemeral X25519 ECDH
+                        for the handshake, AES-256-GCM for the bulk
+                        transport. Forward secrecy is on by default;
+                        seizing a peer tomorrow doesn&apos;t reveal a
+                        chain it carried yesterday.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Ed25519
                         </strong>{" "}
-                        identities. Peers are addressed by their public
-                        key. There are no bearer tokens or session cookies
-                        — no centralized issuer that can rotate keys, log
-                        sign-ins, or revoke identities behind your back.
+                        identities. A peer is its public key. There is
+                        no central issuer rotating tokens, logging
+                        sign-ins, or quietly revoking accounts.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Signed slice advertisements.
                         </strong>{" "}
-                        When a peer announces &ldquo;I host layers <em>k..m</em>{" "}
-                        of model <em>cid</em>,&rdquo; the DHT record is signed.
-                        Routing isn&apos;t a place anyone can lie quietly.
+                        Every &ldquo;I host layers <em>k..m</em> of
+                        model <em>cid</em>&rdquo; record on the DHT
+                        carries a signature. Routing isn&apos;t
+                        somewhere a third party can lie quietly.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             CBOR-framed messages.
                         </strong>{" "}
-                        No JSON, no string parsing on the hot path.
-                        Length-prefixed, fixed-schema, easy to audit.
+                        Length-prefixed, fixed-schema, no string
+                        parsing on the hot path. Easy to audit; easy
+                        to fuzz.
                     </li>
                 </ul>
 
                 <h3 className="font-serif text-xl tracking-tight pt-2"
                     style={{ color: "var(--strong)" }}>
-                    What we don&apos;t defend against (yet)
+                    What this design doesn&apos;t defend against (yet)
                 </h3>
                 <ul className="space-y-3 list-disc pl-5">
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             The entry peer.
                         </strong>{" "}
-                        It sees your prompt in plaintext. Choose entry
-                        peers you trust, or run your own (the front slice
-                        is the cheapest to host).
+                        Plaintext stops there. If you don&apos;t trust
+                        any of the entry candidates, host the front
+                        slice yourself; it&apos;s the cheapest one to
+                        run.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Traffic analysis.
                         </strong>{" "}
-                        Hidden-state sizes leak the model architecture.
-                        Timing leaks token rate. Onion-routed transport is
-                        on the roadmap; today the chain is fast point-to-point,
-                        not anonymous.
+                        Hidden-state shapes leak the model. Token
+                        timing leaks throughput. The chain is fast
+                        point-to-point; it isn&apos;t anonymous.
+                        Onion-routed transport is on the list, not in
+                        the box.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             All-peers-collude.
                         </strong>{" "}
-                        If every peer in your chain is the same operator,
-                        you have one operator, not a chain. Diverse peer
-                        selection is your job and the routing layer&apos;s.
+                        A chain whose peers are all the same operator
+                        is one operator wearing four hats. Diverse
+                        peer selection is the chat client&apos;s job
+                        and the routing layer&apos;s job.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             The model itself.
                         </strong>{" "}
-                        We don&apos;t pretend the model can&apos;t memorize
-                        training data, or that a sufficiently dedicated
-                        attacker can&apos;t probe it. That&apos;s a model
-                        problem, not a transport problem.
+                        Memorization, prompt extraction, jailbreaks,
+                        these are model problems. Splitting the
+                        weights across peers does nothing about them.
                     </li>
                 </ul>
             </section>
@@ -163,126 +168,126 @@ export default function Sovereignty() {
             <section className="space-y-5">
                 <h2 className="font-serif text-3xl tracking-tight"
                     style={{ color: "var(--strong)" }}>
-                    The performance argument
+                    Performance, today vs. later
                 </h2>
                 <p>
-                    A four-hop chain has more round-trips than a single
-                    datacenter call. That cost is real and we won&apos;t
-                    hide it. What changes the calculus is the network
-                    effect: every new peer makes the chain shorter,
-                    closer, and more parallelizable.
+                    Four hops cost more round-trips than one datacenter
+                    call. That cost is real and we won&apos;t hide it.
+                    What changes is population: every additional peer
+                    makes chains shorter, closer, and easier to
+                    parallelise.
                 </p>
 
-                <div className="rounded-2xl p-6 space-y-4"
+                <div className="rounded-2xl p-6 space-y-3"
                      style={{ background: "var(--panel)", border: "1px solid var(--line)" }}>
                     <p className="font-mono text-sm tracking-[0.15em] uppercase"
                        style={{ color: "var(--accent)" }}>
                         Tor, 2003
                     </p>
                     <p>
-                        Hidden-services were unusable for casual browsing.
-                        Pages took fifteen seconds. The relay network had
-                        a few hundred volunteers in two countries. Today
-                        Tor has &gt; 7,000 relays across &gt; 80 countries,
-                        and a typical onion service loads in under a second.
-                        The bottleneck wasn&apos;t the protocol; it was
-                        the population.
+                        Hidden services were unusable for casual
+                        browsing. Pages took fifteen seconds. The relay
+                        network was a few hundred volunteers in two
+                        countries. Today: 7,000+ relays in 80+
+                        countries, onion services that load in under a
+                        second. Protocol unchanged. Population
+                        different.
                     </p>
                 </div>
 
-                <div className="rounded-2xl p-6 space-y-4"
+                <div className="rounded-2xl p-6 space-y-3"
                      style={{ background: "var(--panel)", border: "1px solid var(--line)" }}>
                     <p className="font-mono text-sm tracking-[0.15em] uppercase"
                        style={{ color: "var(--accent)" }}>
                         BitTorrent, 2002
                     </p>
                     <p>
-                        First releases hit single-digit kbps for popular
-                        files. By 2010 a popular torrent saturated home
-                        broadband. Today BitTorrent moves more data than
-                        most CDNs on a typical day. Same observation:
-                        peer-density wins.
+                        First releases were single-digit kbps for
+                        popular files. By 2010, popular torrents
+                        saturated home broadband. Today, more bytes
+                        flow over BitTorrent on a normal evening than
+                        through most CDNs. Same shape of curve.
                     </p>
                 </div>
 
-                <div className="rounded-2xl p-6 space-y-4"
+                <div className="rounded-2xl p-6 space-y-3"
                      style={{ background: "var(--panel)", border: "1px solid var(--line)" }}>
                     <p className="font-mono text-sm tracking-[0.15em] uppercase"
                        style={{ color: "var(--accent)" }}>
-                        IntelNav, today
+                        IntelNav, now
                     </p>
                     <p>
-                        A handful of peers, mostly on the same continent.
-                        A 7B model needs 3 hops; a 33B needs 8. RTTs
-                        dominate over the math on small models. We&apos;re
-                        in the same place Tor was when nobody used it
-                        for the open web.
+                        A handful of peers, mostly on one continent.
+                        A 7B model wants three hops; a 33B wants
+                        eight. RTTs dominate compute on small models.
+                        We&apos;re in the same place Tor was before
+                        anyone used it for the open web.
                     </p>
                 </div>
 
                 <h3 className="font-serif text-xl tracking-tight pt-2"
                     style={{ color: "var(--strong)" }}>
-                    What gets faster as the network grows
+                    What gets faster with population
                 </h3>
                 <ul className="space-y-3 list-disc pl-5">
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Geographic locality.
                         </strong>{" "}
-                        With 10 hosts of layers <em>0..6</em> on your
-                        continent instead of one in another hemisphere,
-                        first-hop RTT drops from 200ms to 20ms. Stack
-                        that across the chain.
+                        With ten hosts of layers <em>0..6</em> on
+                        your continent instead of one in another
+                        hemisphere, first-hop RTT goes from 200&nbsp;ms
+                        to 20&nbsp;ms. Stack that across the chain.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Parallel chains.
                         </strong>{" "}
-                        With redundant hosts of every slice, a chat client
-                        can run two chains in parallel and accept the
-                        first response — same trick CDNs use against
+                        Redundant hosts let the chat client race two
+                        chains and accept the first response.
+                        It&apos;s the same trick CDNs use against
                         single-origin tail latency.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Slice replication.
                         </strong>{" "}
-                        Popular models accumulate redundant hosts.
-                        Unpopular slices stay rare, but you also use them
-                        rarely. The market self-balances.
+                        Popular models pick up redundant hosts on
+                        their own. Unpopular slices stay rare, but
+                        you also use them rarely. The market handles
+                        the balance.
                     </li>
                     <li>
                         <strong style={{ color: "var(--strong)" }}>
                             Speculative decoding.
                         </strong>{" "}
                         A small fast model on the chat client drafts
-                        tokens; the chain only verifies. The wire stays
-                        warm; the perceived latency drops.
+                        tokens; the chain verifies them. The wire
+                        stays warm and perceived latency falls.
                     </li>
                 </ul>
                 <p>
-                    The asymptote isn&apos;t &ldquo;as fast as a datacenter.&rdquo;
-                    For most queries it&apos;s &ldquo;fast enough that
-                    you stop noticing,&rdquo; which is the bar the
-                    centralized providers actually clear today.
+                    The asymptote isn&apos;t &ldquo;as fast as a
+                    datacenter&rdquo;. It&apos;s &ldquo;fast enough
+                    that you stop noticing&rdquo;, which is also the
+                    bar centralized providers actually clear in
+                    practice.
                 </p>
             </section>
 
             <section className="space-y-5">
                 <h2 className="font-serif text-3xl tracking-tight"
                     style={{ color: "var(--strong)" }}>
-                    The political case in one paragraph
+                    Why bother
                 </h2>
                 <p>
-                    A society where the most useful tool for thinking is
-                    rented from three companies, who log every use, who
-                    can revoke access, who decide what the tool is allowed
-                    to discuss — that is not a society where the tool
-                    belongs to its users. It belongs to the renters. We
-                    have built decentralized money, decentralized
-                    publishing, decentralized file delivery, decentralized
-                    name resolution. The model is the next thing that
-                    needs to be the network.
+                    A useful tool for thinking, rented from three
+                    vendors who log every use, who can revoke access,
+                    who decide what the tool may discuss, isn&apos;t
+                    a tool the user owns. It&apos;s a tool the user
+                    rents. We already have decentralised money,
+                    publishing, file delivery, and name resolution.
+                    The model is the next piece.
                 </p>
             </section>
 

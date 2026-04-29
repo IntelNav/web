@@ -70,11 +70,12 @@ export function Hero() {
                         className="mt-8 text-lg sm:text-xl leading-relaxed max-w-xl"
                         style={{ color: "var(--muted)" }}
                     >
-                        IntelNav splits a model into layer-range slices and
-                        scatters them across volunteer hardware. Each peer holds
-                        one slice. Hidden states stream through the chain —{" "}
+                        IntelNav cuts a model into layer ranges and
+                        scatters them across volunteer machines. Each
+                        peer holds one slice. Activations flow through
+                        the resulting chain.{" "}
                         <span style={{ color: "var(--strong)" }}>
-                            no single peer holds the whole model.
+                            No single peer holds the whole model.
                         </span>
                     </motion.p>
 

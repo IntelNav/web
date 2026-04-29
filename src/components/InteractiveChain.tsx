@@ -3,23 +3,14 @@
 import { useState, useRef, useMemo } from "react";
 import { motion } from "framer-motion";
 
-/* The chain explorer.
+/* Interactive chain explorer.
  *
- * One visual: a horizontal layer-stack bar showing all 24 transformer
- * blocks of a Qwen-2.5 0.5B-class model, divided among four peers.
- * Width of each section = number of layers that peer owns.
- *
- * Two interactions:
- *   1. Click a peer to flip its connection tier (LAN → Continent → WAN).
- *   2. Drag a divider to re-assign layer ranges between neighbors.
- *
- * One readout: a single sentence with first-token latency, steady-state
- * tokens/sec, and which peer is the current bottleneck.
- *
- * Everything else (moving packets, security overlays, edge badges,
- * legend, reset button) was chrome that competed with the architecture
- * idea. The architecture idea is: layers are partitioned across peers,
- * the partition is reassignable, and topology determines latency. */
+ * The widget visualises one Qwen-class model (24 blocks) split into
+ * four ranges, one per peer. Click a peer to switch its tier. Drag
+ * a divider to reassign layer ranges between adjacent peers.
+ * Below the bar, three numbers update live: first-token latency,
+ * steady-state tokens/sec, and which peer caps the throughput.
+ */
 
 const N_BLOCKS = 24;
 const COMPUTE_PER_BLOCK_MS = 3.2;
@@ -51,7 +42,7 @@ const INITIAL_PEERS: Peer[] = [
 ];
 const INITIAL_SPLITS = [6, 12, 18];   // four ranges: [0,6) [6,12) [12,18) [18,24)
 
-/* Indigo gradient — saturates as the chain progresses, so the eye
+/* Indigo gradient that saturates from "you" to "tail" so the eye
  * follows hidden state from "you" (lightest) to "tail" (deepest). */
 const PEER_COLORS = ["#a5b4fc", "#818cf8", "#6366f1", "#4338ca"];
 
@@ -144,7 +135,7 @@ export function InteractiveChain() {
                                             : "none",
                                     }}
                                 >
-                                    {/* Subtle layer ticks — one faint line per block boundary inside this peer. */}
+                                    {/* Subtle layer ticks: one faint line per block boundary inside this peer. */}
                                     <LayerTicks count={e - s} />
 
                                     <span className="relative font-serif text-[15px] sm:text-[17px] truncate w-full px-2 leading-tight">
@@ -158,7 +149,7 @@ export function InteractiveChain() {
                         })}
                     </div>
 
-                    {/* Draggable dividers — overlaid at the boundaries. */}
+                    {/* Draggable dividers, overlaid at the boundaries. */}
                     {splits.map((sx, i) => (
                         <div
                             key={i}
@@ -212,7 +203,7 @@ export function InteractiveChain() {
 }
 
 /* Faint vertical hairlines marking each block boundary inside a peer's
- * range — makes layer-count visceral without competing with the label. */
+ * range. Makes layer counts visible without crowding the label. */
 function LayerTicks({ count }: { count: number }) {
     if (count <= 1) return null;
     const ticks = Array.from({ length: count - 1 }, (_, i) => (i + 1) / count);

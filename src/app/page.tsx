@@ -22,26 +22,24 @@ export default function Home() {
     );
 }
 
-/* ────────────────────────────────────────────────────────────────── */
-/* The political case. Centralized inference is unprecedented data
-   centralization — every prompt, logged, by one company. State the
-   threat model concisely and link out to the full argument. */
+/* The political pitch in one section. Three cards, each a single
+ * idea: who can see you, what's on the wire, and why latency
+ * isn't the long-term concern. */
 function Sovereignty() {
     return (
         <section className="max-w-6xl mx-auto px-6 py-12 sm:py-20 lg:py-28">
             <SectionHeader
                 eyebrow="Why decentralized"
-                title="Centralized AI is mass surveillance with extra steps."
+                title="A hosted model logs every prompt. A chain doesn't."
                 lede={
                     <>
-                        Every prompt you send to a hosted model is logged by
-                        one company — your code, your medical questions, your
-                        business plans, your private writing. IntelNav splits
-                        the computation across volunteer hardware so no single
-                        operator sees the whole of it. The wire is real
-                        cryptography. The performance gap closes as the
-                        network grows — the same trajectory Tor and BitTorrent
-                        followed.
+                        When you query a hosted model, the company that
+                        runs it sees and stores what you asked. Your code,
+                        your medical question, your business plan, your
+                        private writing. IntelNav splits the work across
+                        volunteer machines: no one peer holds the whole
+                        prompt, the wire is real cryptography, and the
+                        latency gap shrinks as more people run nodes.
                     </>
                 }
             />
@@ -49,15 +47,16 @@ function Sovereignty() {
             <div className="grid md:grid-cols-3 gap-4">
                 <SovCard
                     tag="Threat"
-                    title="No single operator sees you whole."
+                    title="No single peer sees you whole."
                     body={
                         <>
-                            The entry peer decrypts your prompt and runs the
-                            front layers. Every downstream peer only ever sees
-                            opaque hidden-state tensors — activations, not
-                            text. No peer can reconstruct what you asked from
-                            its slice. The chain is the boundary; no party is
-                            on both sides of it.
+                            The entry peer decrypts the prompt and runs
+                            the front slice. Every peer after it sees
+                            only tensors of activations. No published
+                            method recovers a prompt from a mid-layer
+                            hidden state of a modern transformer. The
+                            chain is the privacy boundary, and no party
+                            stands on both sides of it.
                         </>
                     }
                 />
@@ -66,26 +65,27 @@ function Sovereignty() {
                     title="Real cryptography on every hop."
                     body={
                         <>
-                            Noise XX (X25519 ECDH → AES-256-GCM) between every
-                            peer pair. Identities are Ed25519 — there are no
-                            bearer tokens or session cookies to leak. Slice
-                            advertisements are signed; the DHT is not a place
-                            anyone can lie quietly.
+                            Each peer pair speaks Noise XX: ephemeral
+                            X25519 for the handshake, AES-256-GCM for
+                            bulk traffic, forward secrecy by default.
+                            Peers identify themselves by Ed25519
+                            public keys, not session tokens. Slice
+                            advertisements on the DHT are signed.
                         </>
                     }
                 />
                 <SovCard
                     tag="Trajectory"
-                    title="Slower today. Faster tomorrow."
+                    title="Slower today. Faster with more nodes."
                     body={
                         <>
-                            A 4-hop chain is slower than a single datacenter
-                            call — that&apos;s honest physics. Tor was slow in
-                            2003. BitTorrent was slow in 2002. Network effects
-                            invert the curve: more peers → closer hops, more
-                            hosts of popular slices → parallel chains, better
-                            geographic locality. The network gets faster as
-                            more people join.
+                            A four-hop chain costs more round-trips
+                            than a hosted call. We won&apos;t paper
+                            over it. What changes with population is
+                            shorter hops, parallel chains for tail
+                            latency, more replicas of popular slices.
+                            Tor and BitTorrent both walked this same
+                            curve.
                         </>
                     }
                 />
@@ -167,9 +167,11 @@ function Tagline() {
                 className="font-serif text-3xl sm:text-4xl lg:text-5xl leading-[1.15] tracking-tight"
                 style={{ color: "var(--strong)" }}
             >
-                No data centers. No moats. Just hardware doing math for{" "}
-                <em className="italic" style={{ color: "var(--accent)" }}>strangers</em>
-                {" "}— yours included.
+                No data centers. No moats. A model that runs on
+                {" "}
+                <em className="italic" style={{ color: "var(--accent)" }}>everyone&apos;s hardware</em>
+                {" "}
+                or nobody&apos;s.
             </motion.p>
         </section>
     );
@@ -186,9 +188,10 @@ function LiveDemo() {
                 lede={
                     <>
                         <code>intelnav</code> is the chat client.{" "}
-                        <code>intelnav-node</code> is the host daemon. They share
-                        an identity but run as separate processes — closing the
-                        chat doesn&apos;t take your slices off the network.
+                        <code>intelnav-node</code> is the host daemon.
+                        They share an identity and a models directory,
+                        but run as separate processes; closing the chat
+                        does not take your hosted slices offline.
                     </>
                 }
             />
@@ -262,13 +265,14 @@ function NetworkSection() {
                 title="A model is a chain of layers. So is the network."
                 lede={
                     <>
-                        The bar below is one Qwen-class model — 24 transformer
-                        blocks, divided across four peers. Click a peer to flip
-                        its connection tier; drag a divider to re-assign which
-                        layers each peer holds. The latency and throughput
-                        recompute as you go, so you can feel the tradeoff:
-                        bigger slice = more compute on that peer, more peers
-                        = more network hops.
+                        The bar below is one Qwen-class model: 24
+                        transformer blocks, partitioned across four
+                        peers. Click a peer to switch its connection
+                        tier. Drag a divider to reassign which layers
+                        each peer owns. Latency and throughput recompute
+                        as you go, so the tradeoff stays visible: a
+                        bigger slice means more compute on that peer; a
+                        longer chain means more network hops.
                     </>
                 }
             />
@@ -337,22 +341,22 @@ const features = [
     {
         tag: "01",
         title: "Pipeline-parallel",
-        body: "Each peer owns a contiguous layer range. Hidden states forward through every hop until the head produces a token.",
+        body: "Each peer owns a contiguous layer range. Hidden states travel through every hop in turn, and the head samples a token at the end.",
     },
     {
         tag: "02",
         title: "Kademlia DHT",
-        body: "Provider records advertise (model_cid, layer_range). Clients fan out per-range lookups to assemble a chain on demand.",
+        body: "Provider records advertise (model_cid, layer_range). The chat client fans out per-range lookups and assembles a chain on demand.",
     },
     {
         tag: "03",
         title: "Mandatory contribution",
-        body: "Every peer hosts a slice or relays DHT routing. No leech mode — the network only works because everyone commits.",
+        body: "Every peer hosts a slice or runs as a DHT relay. There is no plain reader mode; the network is what its participants put in.",
     },
     {
         tag: "04",
         title: "Two binaries",
-        body: "intelnav is the chat client. intelnav-node is the host daemon. Closing chat doesn't drop your slices.",
+        body: "intelnav drives the chat. intelnav-node hosts the slices. Closing the chat client leaves your hosted slices online.",
     },
 ];
 

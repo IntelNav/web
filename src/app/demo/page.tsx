@@ -17,12 +17,13 @@ export default function Demo() {
                     A real chain, three peer daemons, one prompt.
                 </h1>
                 <p className="mt-4 text-lg" style={{ color: "var(--muted)" }}>
-                    The interesting part of IntelNav isn&apos;t the chat
-                    client. It&apos;s the <em>chain</em>: a transformer split
-                    across multiple machines, each holding a contiguous range
-                    of layers. Below, three <code>intelnav-node</code> daemons
-                    cover layers 6..24 of Qwen 2.5 · 0.5B. The chat client
-                    runs layers 0..6 locally and forwards through them.
+                    The interesting bit of IntelNav is the{" "}
+                    <em>chain</em>: a transformer split across multiple
+                    machines, each holding a contiguous range of layers.
+                    Below, three <code>intelnav-node</code> daemons cover
+                    layers 6..24 of Qwen 2.5 · 0.5B. The chat client runs
+                    layers 0..6 locally and forwards activations through
+                    them.
                 </p>
             </header>
 
@@ -40,10 +41,12 @@ export default function Demo() {
                 <p className="text-sm" style={{ color: "var(--muted)" }}>
                     Note the banner: <code>peer chain
                     127.0.0.1:17717,17718,17719 · splits=[6, 12, 18]</code>.
-                    The chat client owns layers 0..6 + the head; each peer
-                    owns one slice of the middle. Qwen 0.5B&apos;s arithmetic
-                    is unreliable (it answered 349) — the infrastructure is
-                    what we&apos;re proving, not the model.
+                    The chat client owns layers 0..6 plus the head; each
+                    peer owns one slice of the middle. Qwen 0.5B is the
+                    smallest model we ship, and its arithmetic is bad
+                    (the answer in the cast is 349, which is wrong); the
+                    point of the cast is the infrastructure, not the
+                    model.
                 </p>
             </section>
 
@@ -78,10 +81,11 @@ export default function Demo() {
                        style={{ color: "var(--accent)" }}>
                         scripts/local-swarm.sh
                     </a>
-                    . Every wire is the real protocol — the &ldquo;sandbox&rdquo;
-                    is just the three peers running on the same box. Replace
-                    the loopback addresses with real hosts and you have a
-                    multi-machine swarm.
+                    . The protocol on the wire is the production one;
+                    the &ldquo;sandbox&rdquo; is just that all four
+                    parties live on the same machine. Swap the loopback
+                    addresses for real hosts and you have a multi-machine
+                    swarm.
                 </p>
             </section>
 
@@ -93,37 +97,42 @@ export default function Demo() {
                 <ol className="space-y-3 list-decimal pl-5"
                     style={{ color: "var(--fg)" }}>
                     <li>
-                        <code>local-swarm.sh setup</code> — writes three peer
-                        directories under <code>/tmp/intelnav-swarm/peer-{`{a,b,c}`}/</code>,
+                        <code>local-swarm.sh setup</code>: writes three
+                        peer directories under{" "}
+                        <code>/tmp/intelnav-swarm/peer-{`{a,b,c}`}/</code>,
                         each with its own config and a{" "}
-                        <code>kept_ranges.json</code> sidecar declaring which
-                        layer range it owns.
+                        <code>kept_ranges.json</code> sidecar that
+                        declares the layer range it owns.
                     </li>
                     <li>
-                        <code>start</code> — spawns three{" "}
-                        <code>intelnav-node</code> processes on ports 17717,
-                        17718, 17719. Each binds libp2p, wires up the control
-                        RPC, and starts a forward listener for chain
-                        sessions on its slice.
+                        <code>start</code>: spawns three{" "}
+                        <code>intelnav-node</code> processes on ports
+                        17717, 17718, and 17719. Each binds libp2p,
+                        registers the control RPC, and brings up a
+                        forward listener for chains that hit its slice.
                     </li>
                     <li>
-                        <code>ask</code> — runs <code>intelnav --mode network
-                        ask</code> with a hardcoded <code>peers</code> list
-                        (no DHT lookup needed for the sandbox). The chat
-                        client loads the front slice (layers 0..6) locally,
-                        opens TCP sessions to each peer, runs the chain.
-                        Hidden states stream through every hop; the head
-                        samples a token; the response comes back.
+                        <code>ask</code>: runs{" "}
+                        <code>intelnav --mode network ask</code> with
+                        a hard-coded <code>peers</code> list (the
+                        sandbox skips the DHT lookup). The chat client
+                        loads its front slice (layers 0..6), opens
+                        TCP sessions to each peer, and runs the
+                        chain. Activations flow through every hop, the
+                        head samples a token, and the response comes
+                        back.
                     </li>
                     <li>
-                        Tokens stream back. (Note: the demo uses Qwen 2.5 ·
-                        0.5B because it&apos;s the smallest viable model —
-                        its math accuracy is not guaranteed. The
-                        infrastructure is what we&apos;re proving.)
+                        Tokens stream upstream. The demo uses Qwen
+                        2.5 · 0.5B because that&apos;s the smallest
+                        model we ship; its arithmetic isn&apos;t
+                        reliable, and that isn&apos;t what the cast is
+                        for.
                     </li>
                     <li>
-                        <code>stop</code> — sends SIGTERM. The daemons drain
-                        any in-flight chains (none here) and exit cleanly.
+                        <code>stop</code>: sends SIGTERM. The daemons
+                        drain any in-flight chains (there are none
+                        here) and exit cleanly.
                     </li>
                 </ol>
             </section>
@@ -140,9 +149,10 @@ export default function Demo() {
                     Fresh install, end to end.
                 </h2>
                 <p style={{ color: "var(--muted)" }}>
-                    For completeness — what installing IntelNav from scratch
-                    looks like before any of the network features matter.
-                    Auto-config, contribution gate, /models picker, real
+                    For completeness, here is what installing IntelNav
+                    from scratch looks like before any of the network
+                    features come into play. Auto-config, contribution
+                    gate, /models picker, real
                     download from HuggingFace, real prompt.
                 </p>
                 <AsciinemaPlayer src="/demo.cast" cols={130} rows={38} speed={1.6} />
