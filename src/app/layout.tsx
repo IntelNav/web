@@ -34,14 +34,25 @@ export const metadata: Metadata = {
     description:
         "IntelNav splits a model into layer-range slices, scatters them across volunteer hardware, and streams hidden states through the chain to answer a prompt. No single peer holds the whole model.",
     openGraph: {
-        title: "IntelNav",
+        title: "IntelNav — The model is the network.",
         description:
             "Decentralized, pipeline-parallel LLM inference. No single peer holds the whole model.",
         url: "https://intelnav.net",
         siteName: "IntelNav",
         type: "website",
+        images: [{
+            url:    "/og.png",
+            width:  1200,
+            height: 630,
+            alt:    "IntelNav — decentralized, pipeline-parallel LLM inference",
+        }],
     },
-    twitter: { card: "summary_large_image", title: "IntelNav" },
+    twitter: {
+        card:        "summary_large_image",
+        title:       "IntelNav — The model is the network.",
+        description: "Decentralized, pipeline-parallel LLM inference.",
+        images:      ["/og.png"],
+    },
     icons: { icon: "/logo.svg" },
 };
 
