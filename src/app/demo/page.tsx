@@ -16,18 +16,60 @@ export default function Demo() {
                     What it actually looks like.
                 </h1>
                 <p className="mt-4 text-lg" style={{ color: "var(--muted)" }}>
-                    A real <code>intelnav</code> session: preflight check,
-                    pick a Qwen 0.5B model, run a prompt, watch tokens stream
-                    back. No editing — same binary as <Link href="/install/"
-                    style={{ color: "var(--accent)" }}>install</Link> ships.
+                    A real <code>intelnav</code> walkthrough — recorded, not
+                    edited. The contribution gate fires on first launch,
+                    relay-mode opens the TUI, slash commands surface the full
+                    feature surface (<code>/help</code>, <code>/keybindings</code>,
+                    <code>/hosting</code>), then a real Qwen prompt streams
+                    tokens back through the chain.
                 </p>
             </header>
 
             <section>
-                <AsciinemaPlayer src="/demo.cast" />
+                <AsciinemaPlayer src="/demo.cast" cols={120} rows={36} />
                 <p className="mt-3 text-sm font-mono" style={{ color: "var(--faint)" }}>
-                    asciicast · 25s · loops automatically
+                    asciicast · 33s · loops automatically · 120×36 terminal
                 </p>
+            </section>
+
+            <section className="space-y-3">
+                <h2 className="font-serif text-2xl tracking-tight"
+                    style={{ color: "var(--strong)" }}>
+                    What you&apos;re seeing
+                </h2>
+                <ol className="space-y-2 list-decimal pl-5"
+                    style={{ color: "var(--fg)" }}>
+                    <li>
+                        <strong>The contribution gate</strong> — first launch
+                        with no slice + no relay flag. Tells you to pick one or
+                        the other before chat unlocks.
+                    </li>
+                    <li>
+                        <strong>Relay-mode launch</strong> — the TUI opens with
+                        a status bar showing peer ID and DHT readiness.
+                    </li>
+                    <li>
+                        <code>/help</code> — full slash-command surface:
+                        <code>/models</code>, <code>/hosting</code>,{" "}
+                        <code>/leave</code>, <code>/service</code>,{" "}
+                        <code>/keybindings</code>, more.
+                    </li>
+                    <li>
+                        <code>/keybindings</code> — every shortcut: double-tap
+                        <code>Esc</code> to clear, <code>Ctrl+G</code> to edit
+                        in <code>$EDITOR</code>, <code>Alt+P</code> to cycle
+                        models, <code>Ctrl+Shift+_</code> to undo.
+                    </li>
+                    <li>
+                        <code>/hosting</code> — the daemon RPC reports a live
+                        slice (Qwen 2.5 · 1.5B layers <code>[0..7)</code>),
+                        active chains, state.
+                    </li>
+                    <li>
+                        <strong>Real prompt</strong> — &ldquo;what is 17
+                        squared?&rdquo; streams tokens back through the chain.
+                    </li>
+                </ol>
             </section>
 
             <section className="space-y-4">
